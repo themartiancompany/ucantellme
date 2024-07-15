@@ -1,0 +1,326 @@
+#!/usr/bin/env bash
+#
+# SPDX-License-Identifier: AGPL-3.0
+
+_bin="$( \
+  dirname \
+    "$( \
+      command \
+        -v \
+	  "env")")"
+_lib="${_bin}/../lib"
+_share="${_bin}/../share"
+source \
+  "${_lib}/libcrash-bash/crash-bash"
+
+# shellcheck disable=SC2034
+_global_variables() {
+  input_date=""
+  out_type=""
+  out_name=""
+  prompt_command=""
+  display_message=""
+  input_timeout=""
+  color=""
+  quiet=""
+}
+
+_letmereadyou() {
+  local \
+    _display="${1}" \
+    _passphrase
+  read \
+    -t "${_timeout}" \
+    -s \
+    -p \
+      "${_display}" \
+    _passphrase
+  echo \
+    "${_passphrase}"
+}
+
+_detect_prompt_best() {
+  local \
+    _gui=false \
+    _prompt
+  if [ -n "${DISPLAY}" ]; then
+    _gui=true
+  fi
+  if (
+    command \
+       -v \
+       zenity &> \
+       /dev/null ) && \
+     [[ "${_gui}" == true ]]; then
+    _prompt='zenity'
+  elif (
+    command \
+      -v \
+      systemd-ask-password &> \
+      /dev/null); then
+    _prompt='systemd-ask-password'
+  else
+    _prompt="simple"
+  fi
+  echo \
+    "${_prompt}"
+}
+
+_prompt_zenity() {
+  _prompt_cmd="$( \
+    command \
+      -v \
+      'zenity')"
+  _prompt_opts+=(
+    "--password"
+    "--timeout=${_timeout}"
+  )
+  _mismatch_cmd="${_prompt_cmd}"
+  _mismatch_opts+=(
+    "--info"
+    "--icon" "dialog-password"
+    "--text"
+  )
+}
+
+_prompt_systemd-ask-password(){
+  _prompt_cmd="$( \
+    command \
+      -v \
+      systemd-ask-password)"
+  _prompt_opts+=(
+    "--timeout=${_timeout}"
+  )
+}
+
+_prompt_simple(){
+  _prompt_cmd="_letmereadyou"
+}
+
+_passphrase_file() {
+  local \
+    _dir
+  _dir="$( \
+    realpath \
+      "$( \
+        dirname \
+          "${_out}")")"
+  if [[ ! -e "${_dir}" ]]; then
+    _msg_error \
+      "Save directory ${_dir} does not exists!"
+  fi
+  echo \
+    "${_passphrase}" > \
+    "${_out}"
+  chmod \
+    0700 \
+    "${_out}"
+}
+
+_passphrase_variable() {
+  printf \
+   -v \
+     "${_out}" \
+     "${_passphrase}"
+}
+
+# Prompts a passphrase
+# $1: save type (file, variable)
+# $2: file path or variable name
+_ucantellme() {
+  local \
+    _type="${1}" \
+    _out="${2}" \
+    _display="${3}" \
+    _prompt_command="${4}" \
+    _timeout="${5}" \
+    _passphrase \
+    _confirm \
+    _prompt_cmd \
+    _prompt=() \
+    _prompt_msg=() \
+    _prompt_opts=() \
+    _mismatch=() \
+    _mismatch_cmd="echo" \
+    _confirm_msg="Confirm: " \
+    _mismatch_opts=() \
+    _mismatch_msg="Passphrases mismatch."
+  _prompt_msg=(
+    "${_display}"
+  )
+  "_prompt_${_prompt_command}"
+  _prompt=(
+    "${_prompt_cmd}"
+      "${_prompt_opts[@]}"
+  )
+  _mismatch=(
+    "${_mismatch_cmd}"
+      "${_mismatch_opts[@]}"
+      "${_mismatch_msg}"
+  )
+  while true; do
+    _passphrase="$( \
+      "${_prompt[@]}" \
+        "${_prompt_msg[*]}")"
+    echo \
+      "${_confirm_msg}"
+    _confirm=$( \
+      "${_prompt[@]}" \
+        "${_confirm_msg}")
+    if [[ "${_passphrase}" == "${_confirm}" ]]; then
+      break
+    fi
+    "${_mismatch[@]}"
+  done
+  "_passphrase_${_type}"
+}
+
+# Set defaults and, if present, overrides
+# from ucantellme command line option parameters
+_set_overrides() {
+  _set_override \
+    "input" \
+    "date" \
+    "$(_get_date_human)"
+  _set_override \
+    "out" \
+    "type" \
+    "file"
+  _set_override \
+    "prompt" \
+    "command" \
+    "$(_detect_prompt_best)"
+  _set_override \
+    "display" \
+    "message" \
+    "Insert passphrase: "
+  _set_override \
+    "input" \
+    "timeout" \
+    "69420"
+  if [[ -v override_color ]]; then
+    color="${override_color}"
+  elif [[ -z "${color}" ]]; then
+    color="n"
+  fi
+  if [[ -v override_quiet ]]; then
+    quiet="${override_quiet}"
+  elif [[ -z "${quiet}" ]]; then
+    quiet="y"
+  fi
+}
+
+# Shows configuration options.
+_show_config() {
+  _msg_info "${app_name} configuration"
+  _msg_info "               Input date:   $(_get "input" "date")"
+  _msg_info "           Prompt command:   $(_get "prompt" "command")"
+  _msg_info "                 Out type:   $(_get "out" "type")"
+  _msg_info "                 Out name:   $(_get "out" "name")"
+  _msg_info "          Display message:   $(_get "display" "message")"
+  _msg_info "            Input Timeout:   $(_get "input" "timeout")"
+}
+
+# Show help usage, with an exit status.
+# $1: exit status number.
+_usage() {
+  local \
+    _usage_text
+  IFS='' \
+    read \
+      -r \
+      -d '' \
+      _usage_text << \
+        ENDUSAGETEXT || true
+
+Passphrase insertion tool
+
+Usage:
+  $(_get "app" "name")
+    [options]
+    <out_name>
+  options:
+     -m <out_type>        Output type (file, variable)
+                          Default: $(_get "out" "type")
+     -x <prompt_command>  Passphrase prompt command (zenity, systemd, simple)
+                          Default: $(_get "prompt" "command")
+     -d <display_mesage>  Message to display
+                          Default: $(_get "display" "message")
+     -t <input_timeout>   Input timeout.
+                          Default: $(_get "display" "message")
+     -h                   This message.
+     -v                   Enable verbose output
+ENDUSAGETEXT
+  _printf \
+    '%s\n' \
+    "${_usage_text}"
+  exit \
+    "${1}"
+}
+
+_globals
+_global_variables
+_requirements
+# shellcheck disable=SC2004
+# shellcheck disable=SC2034
+while \
+  getopts \
+    'm:x:d:t:cvh?' \
+    arg; do
+  case \
+    "${arg}" in
+    m) override_out_type="${OPTARG}" ;;
+    x) override_prompt_command="${OPTARG}" ;;
+    d) override_display_message="${OPTARG}" ;;
+    t) override_input_timeout="${OPTARG}" ;;
+    c) override_color="y" ;;
+    v) override_quiet="n" ;;
+    h|?) _set_overrides && \
+	 _usage \
+           0 ;;
+    *)
+    _msg_error \
+      "Invalid argument '${arg}'" \
+      0 && \
+    _set_overrides && \
+    _usage \
+      1
+    ;;
+  esac
+done
+shift \
+  $(( \
+    OPTIND - 1 \
+  ))
+(( $# < 1 )) && \
+  _usage \
+    1
+_set \
+  "out" \
+  "name" \
+  "${1}"
+_set_overrides
+_config_user_init \
+  "$(_get \
+       "app" \
+       "name")"
+app_opts=(
+  "$(_get \
+       "out" \
+       "type")"
+  "$(_get \
+       "out" \
+       "name")"
+  "$(_get \
+       "display" \
+       "message")"
+  "$(_get \
+       "command" \
+       "prompt")"
+  "$(_get \
+       "input" \
+       "timeout")"
+)
+_show_config
+_ucantellme \
+  "${app_opts[@]}"
