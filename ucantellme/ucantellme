@@ -43,7 +43,7 @@ _detect_prompt_best() {
   local \
     _gui=false \
     _prompt
-  if [ -n "${DISPLAY}" ]; then
+  if [[ -v "DISPLAY" ]]; then
     _gui=true
   fi
   if (
@@ -113,7 +113,7 @@ _passphrase_file() {
     "${_passphrase}" > \
     "${_out}"
   chmod \
-    0700 \
+    0400 \
     "${_out}"
 }
 
@@ -260,7 +260,6 @@ ENDUSAGETEXT
 
 _globals
 _global_variables
-_requirements
 # shellcheck disable=SC2004
 # shellcheck disable=SC2034
 while \
@@ -315,8 +314,8 @@ app_opts=(
        "display" \
        "message")"
   "$(_get \
-       "command" \
-       "prompt")"
+       "prompt" \
+       "command")"
   "$(_get \
        "input" \
        "timeout")"
