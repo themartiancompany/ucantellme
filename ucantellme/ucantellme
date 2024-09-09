@@ -244,7 +244,7 @@ Usage:
                           Default: $(_get "out" "type")
      -x <prompt_command>  Passphrase prompt command (zenity, systemd, simple)
                           Default: $(_get "prompt" "command")
-     -d <display_mesage>  Message to display
+     -d <display_message> Message to display
                           Default: $(_get "display" "message")
      -t <input_timeout>   Input timeout.
                           Default: $(_get "display" "message")
