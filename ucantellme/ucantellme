@@ -245,9 +245,9 @@ Usage:
      -x <prompt_command>  Passphrase prompt command (zenity, systemd, simple)
                           Default: $(_get "prompt" "command")
      -d <display_message> Message to display
-                          Default: $(_get "display" "message")
+                          Default: '$(_get "display" "message")'
      -t <input_timeout>   Input timeout.
-                          Default: $(_get "display" "message")
+                          Default: $(_get "input" "timeout")
      -h                   This message.
      -v                   Enable verbose output
 ENDUSAGETEXT
@@ -292,6 +292,7 @@ shift \
     OPTIND - 1 \
   ))
 (( $# < 1 )) && \
+  _set_overrides && \
   _usage \
     1
 _set \
