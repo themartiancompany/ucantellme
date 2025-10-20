@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
-#
+
 # SPDX-License-Identifier: AGPL-3.0
+
+#    ----------------------------------------------------------------------
+#    Copyright © 2024, 2025  Pellegrino Prevete
+#
+#    All rights reserved
+#    ----------------------------------------------------------------------
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 _bin="$( \
   dirname \
@@ -8,10 +27,15 @@ _bin="$( \
       command \
         -v \
 	  "env")")"
-_lib="${_bin}/../lib"
-_share="${_bin}/../share"
-source \
-  "${_lib}/libcrash-bash/crash-bash"
+_lib="$( \
+  realpath \
+    "${_bin}/../lib")"
+_crash_bash="${_lib}/libcrash-bash/crash-bash"
+_sourced \
+  "${_crash_bash}" \
+    2>"/dev/null" || \
+  source \
+    "${_crash_bash}"
 
 # shellcheck disable=SC2034
 _global_variables() {
@@ -213,12 +237,12 @@ _set_overrides() {
 # Shows configuration options.
 _show_config() {
   _msg_info "${app_name} configuration"
-  _msg_info "               Input date:   $(_get "input" "date")"
-  _msg_info "           Prompt command:   $(_get "prompt" "command")"
-  _msg_info "                 Out type:   $(_get "out" "type")"
-  _msg_info "                 Out name:   $(_get "out" "name")"
-  _msg_info "          Display message:   $(_get "display" "message")"
-  _msg_info "            Input Timeout:   $(_get "input" "timeout")"
+  _msg_info "               Input date:   ${input_date}"
+  _msg_info "           Prompt command:   ${prompt_command}"
+  _msg_info "                 Out type:   ${out_type}"
+  _msg_info "                 Out name:   ${out_name}"
+  _msg_info "          Display message:   ${display_message}"
+  _msg_info "            Input Timeout:   ${input_timeout}"
 }
 
 # Show help usage, with an exit status.
@@ -236,18 +260,21 @@ _usage() {
 Passphrase insertion tool
 
 Usage:
-  $(_get "app" "name")
+
+  ${app_name}
     [options]
     <out_name>
+
   options:
      -m <out_type>        Output type (file, variable)
-                          Default: $(_get "out" "type")
+                          Default: ${out_type}
      -x <prompt_command>  Passphrase prompt command (zenity, systemd, simple)
-                          Default: $(_get "prompt" "command")
+                          Default: ${prompt_command}
      -d <display_message> Message to display
-                          Default: '$(_get "display" "message")'
+                          Default: '${display_message}'
      -t <input_timeout>   Input timeout.
-                          Default: $(_get "input" "timeout")
+                          Default: ${input_timeout}
+
      -h                   This message.
      -v                   Enable verbose output
 ENDUSAGETEXT
@@ -259,6 +286,7 @@ ENDUSAGETEXT
 }
 
 _globals
+_requirements
 _global_variables
 # shellcheck disable=SC2004
 # shellcheck disable=SC2034
@@ -291,35 +319,21 @@ shift \
   $(( \
     OPTIND - 1 \
   ))
-(( $# < 1 )) && \
-  _set_overrides && \
+if (( $# < 1 )); then
+  _set_overrides
   _usage \
     1
-_set \
-  "out" \
-  "name" \
-  "${1}"
+fi
+out_name="${1}"
 _set_overrides
 _config_user_init \
-  "$(_get \
-       "app" \
-       "name")"
+  "${app_name}"
 app_opts=(
-  "$(_get \
-       "out" \
-       "type")"
-  "$(_get \
-       "out" \
-       "name")"
-  "$(_get \
-       "display" \
-       "message")"
-  "$(_get \
-       "prompt" \
-       "command")"
-  "$(_get \
-       "input" \
-       "timeout")"
+  "${out_type}"
+  "${out_name}"
+  "${display_message}"
+  "${prompt_command}"
+  "${input_timeout}"
 )
 _show_config
 _ucantellme \
