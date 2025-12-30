@@ -25,8 +25,22 @@ DOC_DIR=$(DESTDIR)$(PREFIX)/share/doc/$(_PROJECT)
 BIN_DIR=$(DESTDIR)$(PREFIX)/bin
 MAN_DIR?=$(DESTDIR)$(PREFIX)/share/man
 
-DOC_FILES=$(wildcard *.rst)
-SCRIPT_FILES=$(wildcard $(_PROJECT)/*)
+_INSTALL_FILE=\
+  install \
+    -vDm644
+_INSTALL_DIR=\
+  install \
+    -vdm755
+_INSTALL_EXE=\
+  install \
+    -vDm755
+
+DOC_FILES=\
+  $(wildcard \
+      *.rst)
+SCRIPT_FILES=\
+  $(wildcard \
+      $(_PROJECT)/*)
 
 all:
 
@@ -43,15 +57,13 @@ install: install-scripts install-doc install-man
 
 install-scripts:
 
-	install \
-	  -vDm755 \
+	$(_INSTALL_EXE) \
 	  "$(_PROJECT)/$(_PROJECT)" \
 	  "$(BIN_DIR)/$(_PROJECT)"
 
 install-doc:
 
-	install \
-	  -vDm644 \
+	$(_INSTALL_FILE) \
 	  $(DOC_FILES) \
 	  -t \
 	  $(DOC_DIR)
